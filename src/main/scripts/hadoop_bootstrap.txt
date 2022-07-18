@@ -20,6 +20,7 @@ hdfs dfs -mkdir /spah
 hdfs dfs -chmod 1777 /spah
 hdfs dfs -mkdir /sparkjars
 hdfs dfs -put /home/vagrant/spark/jars/* /sparkjars
+hdfs dfs -mkdir -p /user/vagrant
 
 # for starting yarn 
 yarn --daemon start resourcemanager
