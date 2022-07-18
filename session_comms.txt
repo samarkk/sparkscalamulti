@@ -1,0 +1,3 @@
+# open the terminal
+# and just punch in
+spark-shell
