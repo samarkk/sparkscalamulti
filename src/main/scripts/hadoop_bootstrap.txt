@@ -1,0 +1,29 @@
+# go to the master node
+# verify connectivity
+nc -zv node1 22
+nc -zv node2 22
+nc -zv node3 22
+# format the namenode
+hdfs namenode -format
+# start the daemons
+hdfs --daemon start namenode
+hdfs --daemon start datanode
+ssh node1 hdfs --daemon start datanode
+ssh node2 hdfs --daemon start datanode
+ssh node2 hdfs --daemon start datanode
+# check the status
+hdfs dfsadmin -report
+# intialize hdfs
+hdfs dfs -mkdir /tmp
+hdfs dfs -chmod 777 /tmp
+hdfs dfs -mkdir /spah
+hdfs dfs -chmod 1777 /spah
+hdfs dfs -mkdir /sparkjars
+hdfs dfs -put /vagrant/spark/jars/* /sparkjars
+
+# for starting yarn 
+yarn --daemon start resourcemanager
+yarn --daemon start nodemanager
+ssh node1 yarn --daemon start nodemanager
+ssh node2 yarn --daemon start nodemanager
+ssh node2 yarn --daemon start nodemanager
