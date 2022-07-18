@@ -6,3 +6,4 @@ https://github.com/samarkk/scalaproject
 val playersMatchesScores = List(("sachin",102,20545), ("virat",85,15456))
 val prdd = sc.parallelize(playersMatchesScores)
 prdd.map(x  => (x._1, (x._2, x._3))).collect
+https://www.gutenberg.org/ebooks/100
