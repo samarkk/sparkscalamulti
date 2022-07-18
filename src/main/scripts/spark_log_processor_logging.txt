@@ -1,1 +1,50 @@
-hello
+# set a jar location to save typing, navigating to the directory
+export APPJAR=/home/vagrant/d/ideaprojects/SparkMulti/core/target/scala-2.13/sparkcore_2.13-0.1.jar
+
+#########################################################################################
+####            first check with local cluster manager                                ###
+#########################################################################################
+spark-submit \
+--class core.SparkLogProcessorWithLogging \
+--driver-java-options "-Dlog4j.configuration=file:///home/vagrant/d/ideaprojects/SparkMulti/src/main/resources/sparklogprocessor.log4j.local.properties -Dspark.yarn.app.container.log.dir=file:///home/vagrant/ideaprojects/SparkMulti/src/main/resources" \
+--conf spark.executor.extraJavaOptions=-Dlog4j.configuration=file:///home/vagrant/d/ideaprojects/SparkMulti/src/main/resources/sparklogprocessor.log4j.local.properties \
+--master local \
+$APPJAR apachelogs50k.gz badrecs
+
+##############################################################################################
+############             check on spark standalone                                 ###########
+##############################################################################################
+
+spark-submit \
+--class core.SparkLogProcessorWithLogging \
+--driver-java-options "-Dlog4j.configuration=file:///home/vagrant/d/ideaprojects/SparkMulti/src/main/resources/sparklogprocessor.log4j.ssa.properties" \
+--conf spark.executor.extraJavaOptions=-Dlog4j.configuration=file:///home/vagrant/d/ideaprojects/SparkMulti/src/main/resources/sparklogprocessor.log4j.ssa.properties \
+--master spark://master:7077 \
+$APPJAR apachelogs50k.gz badrecs
+
+##############################################################################################
+############             check on yarn                                             ###########
+###############################################################################################
+spark-submit \
+--class  core.SparkLogProcessorWithLogging \
+--driver-java-options "-Dlog4j.configuration=file:///home/vagrant/d/ideaprojects/SparkMulti/src/main/resources/sparklogprocessor.log4j.yarn.properties -Dspark.yarn.app.container.log.dir=file:///home/vagrant" \
+--conf spark.executor.extraJavaOptions=-Dlog4j.configuration=file:///home/vagrant/d/ideaprojects/SparkMulti/src/main/resources/sparklogprocessor.log4j.yarn.properties \
+--master yarn \
+$APPJAR apachelogs50k.gz badrecs
+
+# see the applications completed
+yarn application -list -appStates ALL
+
+export APPTOCHECK=application_1657611308217_0002
+# take a look at the logs for the application that finished
+yarn logs -applicationId \
+$APPTOCHECK \
+-show_container_log_info
+
+export CONTTOCHECK=container_1657611308217_0002_01_000001
+# we can get to the log file for the executor specifically
+yarn logs -applicationId \
+$APPTOCHECK \
+-containerId \
+$CONTTOCHECK \
+-log_files SparkLogProcessorAppender.log

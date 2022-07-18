@@ -1,0 +1,6 @@
+Deploy on yarn client mode
+Deploy on yarn cluster mode - wait app completion false
+Check logging - client / cluster mode
+Deploy on yarn in parallel - multiple apps
+Check capacity scheduler
+Check fair scheduler
