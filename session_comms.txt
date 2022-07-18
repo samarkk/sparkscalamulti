@@ -3,3 +3,6 @@
 spark-shell
 just an illustration
 https://github.com/samarkk/scalaproject
+val playersMatchesScores = List(("sachin",102,20545), ("virat",85,15456))
+val prdd = sc.parallelize(playersMatchesScores)
+prr.map(x => x.split(",")).collect
