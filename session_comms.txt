@@ -20,6 +20,7 @@ sc.textFile("C:/data/shakespeare.txt").flatMap(_.split(" ")).filter(_ != "").map
 cd \sparkmulti
 vagrant up master node1 node2 node3
 ls -l /home/vagrant/c/data
+hdfs dfs -mkdir -p /user/vagrant
 hdfs dfs -put /home/vagrant/c/data/apachelogs.gz 
 hdfs dfs -put /home/vagrant/c/data/apachelogs50k.gz
 
