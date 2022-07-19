@@ -33,7 +33,7 @@ spark-shell --master yarn --executor-memory 1500M --conf spark.memory.fraction=0
 libraryDependencies ++= Seq("org.apache.spark" %% "spark-core" % "3.3.0",
   "org.apache.spark" %% "spark-sql" % "3.3.0")
 import org.apache.spark.sql.SparkSession
-val spark = Spark.builder().appName("DemoSpark").getOrCreate()
+val spark = SparkSession.builder().appName("DemoSpark").getOrCreate()
 println(spark.version)
 val sc = spark.sparkContext
 val ardd = sc.parallelize(1 to 1000)
