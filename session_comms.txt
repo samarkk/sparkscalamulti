@@ -24,3 +24,8 @@ hdfs dfs -mkdir -p /user/vagrant
 hdfs dfs -put /home/vagrant/c/data/apachelogs.gz 
 hdfs dfs -put /home/vagrant/c/data/apachelogs50k.gz
 https://github.com/samarkk/scalaproject/blob/master/src/main/scala/patternmatching/PatternMatchingExample.scala
+val adf = accessLogs.toDF
+adf.printSchema
+adf.groupBy("responseCode").count()
+adf.createOrReplaceTempView("adt")
+spark.sql("Select responsecode, count(*) from adt group by responsecode").show
