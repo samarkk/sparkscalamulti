@@ -23,4 +23,4 @@ ls -l /home/vagrant/c/data
 hdfs dfs -mkdir -p /user/vagrant
 hdfs dfs -put /home/vagrant/c/data/apachelogs.gz 
 hdfs dfs -put /home/vagrant/c/data/apachelogs50k.gz
-
+https://github.com/samarkk/scalaproject/blob/master/src/main/scala/patternmatching/PatternMatchingExample.scala
