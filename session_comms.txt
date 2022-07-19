@@ -30,3 +30,5 @@ adf.groupBy("responseCode").count()
 adf.createOrReplaceTempView("adt")
 spark.sql("Select responsecode, count(*) from adt group by responsecode").show
 spark-shell --master yarn --executor-memory 1500M --conf spark.memory.fraction=0.8 --num-executors 4 --executor-cores 1
+libraryDependencies ++= Seq("org.apache.spark" %% "spark-core" % "3.3.0",
+  "org.apache.spark" %% "spark-sql" % "3.3.0")
