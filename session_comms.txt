@@ -43,3 +43,15 @@ println(ardd.sum())
  hive
  create table ftbl(c1 integer, c2 string);
  insert into ftbl values (1, 'ram'), (2, 'sham'), (3, 'sita'), (4, 'gita');
+show tables;
+ select * from ftbl;
+ dfs -ls /user/hive;
+ dfs -mkkdir eftbldir;
+ dfs -cp /user/hive/warehouse/
+ create external table eftbl(c1 integer, c2 string) location 'hdfs://192.168.56.2:8020/user/vagrant/eftbldir';
+show tables;
+select * from eftbl;
+drop table ftbl;
+drop table eftbl;
+dfs -ls;
+dfs -ls -R /user/hive;
