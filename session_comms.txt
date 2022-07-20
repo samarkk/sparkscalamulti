@@ -47,7 +47,7 @@ show tables;
  select * from ftbl;
  dfs -ls /user/hive;
  dfs -mkkdir eftbldir;
- dfs -cp /user/hive/warehouse/ftbl/part* eftbldir;
+ dfs -cp /user/hive/warehouse/ftbl/00* eftbldir;
  create external table eftbl(c1 integer, c2 string) location 'hdfs://192.168.56.2:8020/user/vagrant/eftbldir';
 show tables;
 select * from eftbl;
