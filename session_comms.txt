@@ -41,3 +41,5 @@ println(ardd.sum())
  hive --service metastore 2>&1 &>/dev/null &
  tlpg 9083
  hive
+ create table ftbl(c1 integer, c2 string);
+ insert into ftbl values (1, 'ram'), (2, 'sham'), (3, 'sita'), (4, 'gita');
