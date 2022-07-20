@@ -38,3 +38,6 @@ println(spark.version)
 val sc = spark.sparkContext
 val ardd = sc.parallelize(1 to 1000)
 println(ardd.sum())
+ hive --service metastore 2>&1 &>/dev/null &
+ tlpg 9083
+ hive
