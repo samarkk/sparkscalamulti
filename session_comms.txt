@@ -1,3 +1,4 @@
+https://tcheck.co/HzB8X5
 # open the terminal
 # and just punch in
 spark-shell
