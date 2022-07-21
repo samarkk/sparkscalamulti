@@ -217,7 +217,7 @@ spark-submit \
     --conf spark.kubernetes.namespace=default \
     --conf spark.kubernetes.executor.limit.cores=1 \
     --conf spark.kubernetes.driver.pod.name=sparkpi \
-    --conf spark.kubernetes.container.image=samar67/spark:spark3r5 \
+    --conf spark.kubernetes.container.image=samar67/spark:spark3r4 \
     --conf spark.kubernetes.authenticate.driver.serviceAccountName=spark  \
     --conf spark.kubernetes.submission.waitAppCompletion=false \
     local:///opt/spark/examples/jars/spark-examples_2.13-3.3.0.jar
@@ -234,7 +234,7 @@ spark-submit \
     --conf spark.executor.instances=2 \
     --conf spark.kubernetes.executor.request.cores=300m \
     --conf spark.kubernetes.executor.limit.cores=1 \
-    --conf spark.kubernetes.container.image="samar67/spark:spark3r5" \
+    --conf spark.kubernetes.container.image="samar67/spark:spark3r4" \
     --conf spark.kubernetes.authenticate.driver.serviceAccountName=spark  \
     --conf spark.kubernetes.submission.waitAppCompletion=false \
     --conf spark.kubernetes.driver.pod.name=sparkhlp \
@@ -358,4 +358,4 @@ kubectl create secret generic aws-secret --from-literal=key=<replace with access
 # replace the master address with the running eks cluster address
 spark-submit --master k8s://https://74CD38CDF7186E80FA15226FBE7AD57F.gr7.us-east-1.eks.amazonaws.com --deploy-mode cluster --name spark-pi --class org.apache.spark.examples.SparkPi --conf spark.executor.instances=2 --conf spark.kubernetes.namespace=default --conf spark.kubernetes.executor.request.cores=800m --conf spark.kubernetes.executor.limit.cores=1 --conf spark.kubernetes.driver.pod.name=sparkpi --conf spark.kubernetes.container.image=samar67/spark:spark3r4 --conf spark.kubernetes.authenticate.driver.serviceAccountName=spark  --conf spark.kubernetes.submission.waitAppCompletion=false local:///opt/spark/examples/jars/spark-examples_2.13-3.3.0.jar
 
-spark-submit --master k8s://https://74CD38CDF7186E80FA15226FBE7AD57F.gr7.us-east-1.eks.amazonaws.com --deploy-mode cluster --name spark-s3check --class SparkS3AOpsWConf --conf spark.executor.instances=2 --conf spark.kubernetes.executor.request.cores=500m --conf spark.kubernetes.executor.limit.cores=1 --conf spark.kubernetes.container.image="samar67/spark:spark3r5" --conf spark.kubernetes.driver.pod.name=sparks3ch --conf spark.kubernetes.namespace=default --conf spark.kubernetes.authenticate.driver.serviceAccountName=spark  --conf spark.kubernetes.driver.secretKeyRef.AWS_ACCESS_KEY_ID=aws-secret:key --conf spark.kubernetes.driver.secretKeyRef.AWS_SECRET_ACCESS_KEY=aws-secret:secret --conf spark.kubernetes.executor.secretKeyRef.AWS_ACCESS_KEY_ID=aws-secret:key --conf spark.kubernetes.executor.secretKeyRef.AWS_SECRET_ACCESS_KEY=aws-secret:secret --conf spark.kubernetes.submission.waitAppCompletion=false local:///opt/spark/examples/jars/sparks3.jar  s3a://fbucketn/shakespeare.txt s3a://fbucketn/shakwc1 INFO
+spark-submit --master k8s://https://74CD38CDF7186E80FA15226FBE7AD57F.gr7.us-east-1.eks.amazonaws.com --deploy-mode cluster --name spark-s3check --class SparkS3AOpsWConf --conf spark.executor.instances=2 --conf spark.kubernetes.executor.request.cores=500m --conf spark.kubernetes.executor.limit.cores=1 --conf spark.kubernetes.container.image="samar67/spark:spark3r4" --conf spark.kubernetes.driver.pod.name=sparks3ch --conf spark.kubernetes.namespace=default --conf spark.kubernetes.authenticate.driver.serviceAccountName=spark  --conf spark.kubernetes.driver.secretKeyRef.AWS_ACCESS_KEY_ID=aws-secret:key --conf spark.kubernetes.driver.secretKeyRef.AWS_SECRET_ACCESS_KEY=aws-secret:secret --conf spark.kubernetes.executor.secretKeyRef.AWS_ACCESS_KEY_ID=aws-secret:key --conf spark.kubernetes.executor.secretKeyRef.AWS_SECRET_ACCESS_KEY=aws-secret:secret --conf spark.kubernetes.submission.waitAppCompletion=false local:///opt/spark/examples/jars/sparks3.jar  s3a://fbucketn/shakespeare.txt s3a://fbucketn/shakwc1 INFO
