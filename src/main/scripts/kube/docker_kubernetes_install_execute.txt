@@ -257,7 +257,7 @@ spark-submit \
     --conf spark.kubernetes.driver.pod.name=sparklpwl \
     local:///opt/spark/examples/jars/sparkcore.jar hdfs://192.168.56.2:8020/user/vagrant/apachelogs50k.gz hdfs://192.168.56.2:8020/user/vagrant/badrecs
 
-kubectl create secret generic aws-secret --from-literal=key=AKIAUU4W47OPUDP3BPXH --from-literal=secret=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
+kubectl create secret generic aws-secret --from-literal=key=<access key id> --from-literal=secret=<secret access key>
 
 # submitting to fetch data and store results in s3
 spark-submit \
