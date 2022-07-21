@@ -1,0 +1,361 @@
+# install docker all nodes
+# install containerd
+
+# containerd.io installed allready along with docker
+
+# had to set repo_gpgcheck=0 in kubernetes.repo
+# add the kubernetes repo
+cat <<EOF | sudo tee /etc/yum.repos.d/kubernetes.repo
+[kubernetes]
+name=Kubernetes
+baseurl=https://packages.cloud.google.com/yum/repos/kubernetes-el7-x86_64
+enabled=1
+gpgcheck=1
+repo_gpgcheck=0
+gpgkey=https://packages.cloud.google.com/yum/doc/yum-key.gpg https://packages.cloud.google.com/yum/doc/rpm-package-key.gpg
+exclude=kubelet kubeadm kubectl
+EOF
+
+# Set SELinux in permissive mode (effectively disabling it)
+sudo setenforce 0
+sudo sed -i 's/^SELINUX=enforcing$/SELINUX=permissive/' /etc/selinux/config
+
+# turn swap off
+sudo swapoff -a
+sudo vim /etc/fstab
+comment /swapfile
+sudo sysctl --system
+
+# install kubeadm kubectl etc
+sudo yum install -y kubelet kubeadm kubectl --disableexcludes=kubernetes
+
+# An overlay-filesystem tries to present a filesystem which is the result over overlaying one filesystem on top of the other
+# br_netfilter module is required to enable transparent masquerading and to facilitate Virtual Extensible LAN (VxLAN) traffic for communication between Kubernetes pods across the cluster
+
+cat <<EOF | sudo tee /etc/modules-load.d/k8s.conf
+overlay
+br_netfilter
+EOF
+
+# modprobe intelligently adds or removes a module from the Linux kernel: note that for convenience, there is no differencebetween _ and - in module names
+
+sudo modprobe overlay
+sudo modprobe br_netfilter
+
+# sysctl params required by setup, params persist across reboots
+cat <<EOF | sudo tee /etc/sysctl.d/k8s.conf
+net.bridge.bridge-nf-call-iptables  = 1
+net.bridge.bridge-nf-call-ip6tables = 1
+net.ipv4.ip_forward                 = 1
+EOF
+sudo swapoff -a
+# Apply sysctl params without reboot
+sudo sysctl --system
+
+# kubelet enable - will start only after kubeadm init
+# before that will get red line error
+sudo systemctl restart containerd
+sudo systemctl enable --now kubelet
+
+# from calico
+# have to do this on all nodes to /etc/containerd/config.toml
+#disabled_plugins = ["cri"]
+
+sudo kubeadm init --pod-network-cidr=192.168.0.0/16 --apiserver-advertise-address 192.168.56.2
+# [preflight] You can also perform this action in beforehand using 'kubeadm config images pull'
+
+# To start using your cluster, you need to run the following as a regular user:
+mkdir -p $HOME/.kube
+sudo cp -i /etc/kubernetes/admin.conf $HOME/.kube/config
+sudo chown $(id -u):$(id -g) $HOME/.kube/config
+
+# You should now deploy a pod network to the cluster.
+# Run "kubectl apply -f [podnetwork].yaml" with one of the options listed at:
+# https://kubernetes.io/docs/concepts/cluster-administration/addons/
+
+# Then you can join any number of worker nodes by running the following on each as root:
+sudo kubeadm join 192.168.56.2:6443 --token ecjnjb.cztedgizo8gxe121 \
+        --discovery-token-ca-cert-hash sha256:d57f4200b29fd345e31c048362e5721c71d550b9fc485efa646ed4f64009c664
+
+# check the pods - there will be none in default namespace
+# coredns in kube-system will run after a cni plugin is enabled
+kubectl get pods
+kubectl get pods --all-namespaces
+
+# Install the Tigera Calico operator and custom resource definitions.
+
+kubectl create -f https://projectcalico.docs.tigera.io/manifests/tigera-operator.yaml
+Install Calico by creating the necessary custom resource. For more information on configuration options available in this manifest, see the installation reference.
+
+kubectl create -f https://projectcalico.docs.tigera.io/manifests/custom-resources.yaml
+Note: Before creating this manifest, read its contents and make sure its settings are correct for your environment. For example, you may need to change the default IP pool CIDR to match your pod network CIDR
+
+watch kubectl get pods -n calico-system
+# this will have some pods - calico-kube-controllers as pending until 
+# a - we remove the taint from the master control plane pod
+kubectl taint nodes --all node-role.kubernetes.io/control-plane-
+# or b - we join other nodes to the cluster
+# and coredns will also continue to be pending
+
+# now execute the cluster joining command on the worker nodes 
+# and we should have coredns as well as calico-kube-controllers running
+
+Wait until each pod has the STATUS of Running
+
+# if we need to reinit kubeadm and join nodes
+# need to clean /etc/kubernetes and stop kubelet
+# to see some sanity in journalctl at least during development
+# clean it using sudo rm -rf /run/log/journal/*
+
+#####################################################################
+creating the kubernetes dashboard
+#####################################################################
+kubectl apply -f https://raw.githubusercontent.com/kubernetes/dashboard/v2.5.0/aio/deploy/recommended.yaml
+
+# create admin-user 
+kubectl apply -f /vagrant/kube/dashboard-user.yaml
+
+apply these two files from kubectl
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: admin-user
+  namespace: kubernetes-dashboard
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: admin-user
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: cluster-admin
+subjects:
+- kind: ServiceAccount
+  name: admin-user
+  namespace: kubernetes-dashboard
+
+# copy .kube/config to a location that can be found in windows
+cp ~/.kube/config /vagrant
+# set KUBECONFIG run kubectl proxy on windows
+export KUBECONFIG=/d/vagpg/kafkasecmon/config
+kubectl proxy
+get the token using this command
+# the token will have to be obtained from the master machine
+kubectl -n kubernetes-dashboard create token admin-user
+
+and one can log in at localhost:8001 using the token
+# go to the link below
+http://localhost:8001/api/v1/namespaces/kubernetes-dashboard/services/https:kubernetes-dashboard:/proxy/#/workloads?namespace=default
+
+#############################################
+install helm on centos
+#############################################
+
+# installing helm on centos
+curl -fsSL -o get_helm.sh https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3
+chmod 700 get_helm.sh
+./get_helm.sh
+
+
+########################################################################
+kubectl commands
+########################################################################
+# everywhere can add -n <namespace name>
+kubectl get nodes
+kubectl get pods
+kubectl get deployments 
+kubectl scale --replilcas 4 deployment/test
+
+# get all images in kubernetes registry
+kubectl get pods --all-namespaces -o jsonpath="{.items[*].spec.containers[*].image}" |\
+tr -s '[[:space:]]' '\n' |\
+sort |\
+uniq -c
+
+kubectl get deployments hello-world
+kubectl describe deployments hello-world
+
+kubectl get replicasets
+kubectl describe replicasets
+
+kubectl config view
+kubectl config use-context <context from config>
+
+##############################################################################
+preparing spark image for docker and kubernetes and running spark on kubernetes
+##############################################################################
+
+./bin/docker-image-tool.sh -r sparkimg -t my-tag build
+./bin/docker-image-tool.sh -r sparkimg -t my-tag push
+
+# cretate service account and grant rights
+kubectl create serviceaccount spark
+kubectl create clusterrolebinding spark-role --clusterrole=edit --serviceaccount=default:spark --namespace=default
+
+# to run from a private registry we need to create a secret 
+# log in to docker hub with username and password
+# that will create a file ~/.docker/config.json
+# from that file create a secret
+# we have enabled kubernetes to use the private registry
+
+kubectl create secret generic regcred \
+    --from-file=.dockerconfigjson=/vagrant/dockerconfig.json \
+    --type=kubernetes.io/dockerconfigjson
+# if it is a public image it should run without the secret also
+
+export KCN=k8s://https://74CD38CDF7186E80FA15226FBE7AD57F.gr7.us-east-1.eks.amazonaws.com
+export KCN=k8s://https://192.168.56.2:6443 
+
+// check out running sparkpi
+spark-submit \
+    --master k8s://https://192.168.56.2:6443  \
+    --deploy-mode cluster \
+    --name spark-pi \
+    --class org.apache.spark.examples.SparkPi \
+    --conf spark.executor.instances=2 \
+    --conf spark.kubernetes.namespace=default \
+    --conf spark.kubernetes.executor.limit.cores=1 \
+    --conf spark.kubernetes.driver.pod.name=sparkpi \
+    --conf spark.kubernetes.container.image=samar67/spark:spark3r5 \
+    --conf spark.kubernetes.authenticate.driver.serviceAccountName=spark  \
+    --conf spark.kubernetes.submission.waitAppCompletion=false \
+    local:///opt/spark/examples/jars/spark-examples_2.13-3.3.0.jar
+
+# the configuration option to add the secret
+# --conf spark.kubernetes.container.image.pullSecrets=regcred \
+
+# spark hdfs log processor
+spark-submit \
+    --master k8s://https://192.168.56.2:6443 \
+    --deploy-mode cluster \
+    --name sparkhlp \
+    --class core.SparkLogProcessor \
+    --conf spark.executor.instances=2 \
+    --conf spark.kubernetes.executor.request.cores=300m \
+    --conf spark.kubernetes.executor.limit.cores=1 \
+    --conf spark.kubernetes.container.image="samar67/spark:spark3r5" \
+    --conf spark.kubernetes.authenticate.driver.serviceAccountName=spark  \
+    --conf spark.kubernetes.submission.waitAppCompletion=false \
+    --conf spark.kubernetes.driver.pod.name=sparkhlp \
+    local:///opt/spark/examples/jars/sparkcore.jar hdfs://192.168.56.2:8020/user/vagrant/apachelogs50k.gz
+
+# process logs and save badrecs
+# spark log processor with logging
+
+spark-submit \
+    --master k8s://https://192.168.56.2:6443 \
+    --deploy-mode cluster \
+    --name sparklpwl \
+    --class core.SparkLogProcessorWithLogging \
+    --conf spark.executor.instances=2 \
+    --conf spark.kubernetes.executor.request.cores=300m \
+    --conf spark.kubernetes.executor.limit.cores=1 \
+    --conf spark.kubernetes.container.image="samar67/spark:spark3r4" \
+    --conf spark.kubernetes.authenticate.driver.serviceAccountName=spark  \
+    --conf spark.kubernetes.submission.waitAppCompletion=false \
+    --conf spark.kubernetes.driver.pod.name=sparklpwl \
+    local:///opt/spark/examples/jars/sparkcore.jar hdfs://192.168.56.2:8020/user/vagrant/apachelogs50k.gz hdfs://192.168.56.2:8020/user/vagrant/badrecs
+
+kubectl create secret generic aws-secret --from-literal=key=AKIAUU4W47OPUDP3BPXH --from-literal=secret=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
+
+# submitting to fetch data and store results in s3
+spark-submit \
+    --master k8s://https://192.168.56.2:6443 \
+    --deploy-mode cluster \
+    --name spark-s3check \
+    --class SparkS3AOpsWConf \
+    --conf spark.executor.instances=2 \
+    --conf spark.kubernetes.executor.request.cores=500m \
+    --conf spark.kubernetes.executor.limit.cores=1 \
+    --conf spark.kubernetes.container.image="samar67/spark:spark3r4" \
+    --conf spark.kubernetes.driver.pod.name=sparks3ch \
+    --conf spark.kubernetes.namespace=default \
+    --conf spark.kubernetes.authenticate.driver.serviceAccountName=spark  \
+    --conf spark.kubernetes.driver.secretKeyRef.AWS_ACCESS_KEY_ID=aws-secret:key \
+    --conf spark.kubernetes.driver.secretKeyRef.AWS_SECRET_ACCESS_KEY=aws-secret:secret \
+    --conf spark.kubernetes.executor.secretKeyRef.AWS_ACCESS_KEY_ID=aws-secret:key \
+    --conf spark.kubernetes.executor.secretKeyRef.AWS_SECRET_ACCESS_KEY=aws-secret:secret \
+    --conf spark.kubernetes.submission.waitAppCompletion=false \
+    local:///opt/spark/examples/jars/sparks3.jar  s3a://expb/shak.txt s3a://expb/shak2475 INFO
+
+# submitting to fetch data and store results in s3 and testing the packages option
+# continue to get class not found error
+spark-submit \
+    --master k8s://https://192.168.56.2:6443 \
+    --deploy-mode cluster \
+    --name spark-s3check \
+    --class SparkS3AOpsWConf \
+    --conf spark.executor.instances=2 \
+    --conf spark.kubernetes.executor.request.cores=500m \
+    --conf spark.kubernetes.executor.limit.cores=1 \
+    --conf spark.kubernetes.container.image="samar67/spark:spark3r2" \
+    --conf spark.kubernetes.driver.pod.name=sparks3ch \
+    --conf spark.kubernetes.namespace=default \
+    --conf spark.kubernetes.authenticate.driver.serviceAccountName=spark  \
+    --conf spark.kubernetes.driver.secretKeyRef.AWS_ACCESS_KEY_ID=aws-secret:key \
+    --conf spark.kubernetes.driver.secretKeyRef.AWS_SECRET_ACCESS_KEY=aws-secret:secret \
+    --conf spark.kubernetes.executor.secretKeyRef.AWS_ACCESS_KEY_ID=aws-secret:key \
+    --conf spark.kubernetes.executor.secretKeyRef.AWS_SECRET_ACCESS_KEY=aws-secret:secret \
+    --conf spark.kubernetes.file.upload.path=s3a://expb/awsdeps \
+    --conf spark.hadoop.fs.s3a.impl=org.apache.hadoop.fs.s3a.S3AFileSystem \
+    --conf spark.hadoop.fs.s3a.fast.upload=true \
+    --conf spark.driver.extraJavaOptions="-Divy.cache.dir=/tmp -Divy.home=/tmp" \
+    --conf spark.kubernetes.submission.waitAppCompletion=false \
+    --packages org.apache.hadoop:hadoop-aws:3.3.2 \
+    local:///opt/spark/examples/jars/sparks3.jar  s3a://expb/shak.txt s3a://expb/shak2475 INFO
+
+#############################################
+eks and eksctl and running spark on aws kubernetes
+#############################################
+windows install kubectl from this link
+https://docs.aws.amazon.com/eks/latest/userguide/install-kubectl.html
+curl -o kubectl.exe https://s3.us-west-2.amazonaws.com/amazon-eks/1.22.6/2022-03-09/bin/windows/amd64/kubectl.exe
+kubectl version --short --client
+
+kubectl version --short --client
+Client Version: v1.22.6-eks-7d68063
+
+# do a search for chocolaey install and install choco on windows using powershell
+
+# to install eskctl install chocolatey and then 
+choco install -y eksctl 
+
+# to install helm
+choco install -y kubernetes-helm
+
+# create cluster
+eksctl create cluster -n spark-cluster --region us-east-1 --spot --instance-types=m4.large  --nodes 3
+# add the stable repository for helm
+helm repo add stable https://charts.helm.sh/stable
+
+# helm hub similar to docker hub, confluent hub
+helm search hub nginx
+helm repo add bitnami https://charts.bitnami.com/bitnami
+
+# this will put nginx folder in the location from where it is called
+helm pull bitnami/nginx --untar=true
+helm install helm-nginx bitnami/nginx
+
+# for spark operateor kubernetes-hdfs etc
+helm repo add spark-operator https://googlecloudplatform.github.io/spark-on-k8s-operator
+
+helm install my-release spark-operator/spark-operator --namespace spark-operator --set webhook.enable=true --create-namespace
+# to uninstall 
+helm delete my-release --namespace spark-operator
+# copy spark-pi.yaml to /vagrant/kube
+kubectl apply -f /vagrant/kube/spark-pi.yaml
+kubectl get sparkapplications spark-pi -o=yaml
+kubectl describe sparkapplication spark-pi
+kubectl get pods
+# there will be a driver pod with application name - driver
+kubectl logs -f spark-pi-driver
+kubectl delete sparkapplication spark-pi
+
+# create secret for the access key
+kubectl create secret generic aws-secret --from-literal=key=<replace with access-key-id> --from-literal=secret=<replace with secret access key>
+
+# replace the master address with the running eks cluster address
+spark-submit --master k8s://https://74CD38CDF7186E80FA15226FBE7AD57F.gr7.us-east-1.eks.amazonaws.com --deploy-mode cluster --name spark-pi --class org.apache.spark.examples.SparkPi --conf spark.executor.instances=2 --conf spark.kubernetes.namespace=default --conf spark.kubernetes.executor.request.cores=800m --conf spark.kubernetes.executor.limit.cores=1 --conf spark.kubernetes.driver.pod.name=sparkpi --conf spark.kubernetes.container.image=samar67/spark:spark3r4 --conf spark.kubernetes.authenticate.driver.serviceAccountName=spark  --conf spark.kubernetes.submission.waitAppCompletion=false local:///opt/spark/examples/jars/spark-examples_2.13-3.3.0.jar
+
+spark-submit --master k8s://https://74CD38CDF7186E80FA15226FBE7AD57F.gr7.us-east-1.eks.amazonaws.com --deploy-mode cluster --name spark-s3check --class SparkS3AOpsWConf --conf spark.executor.instances=2 --conf spark.kubernetes.executor.request.cores=500m --conf spark.kubernetes.executor.limit.cores=1 --conf spark.kubernetes.container.image="samar67/spark:spark3r5" --conf spark.kubernetes.driver.pod.name=sparks3ch --conf spark.kubernetes.namespace=default --conf spark.kubernetes.authenticate.driver.serviceAccountName=spark  --conf spark.kubernetes.driver.secretKeyRef.AWS_ACCESS_KEY_ID=aws-secret:key --conf spark.kubernetes.driver.secretKeyRef.AWS_SECRET_ACCESS_KEY=aws-secret:secret --conf spark.kubernetes.executor.secretKeyRef.AWS_ACCESS_KEY_ID=aws-secret:key --conf spark.kubernetes.executor.secretKeyRef.AWS_SECRET_ACCESS_KEY=aws-secret:secret --conf spark.kubernetes.submission.waitAppCompletion=false local:///opt/spark/examples/jars/sparks3.jar  s3a://fbucketn/shakespeare.txt s3a://fbucketn/shakwc1 INFO
