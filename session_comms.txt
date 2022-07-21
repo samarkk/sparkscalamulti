@@ -56,3 +56,4 @@ drop table eftbl;
 dfs -ls;
 dfs -ls -R /user/hive;
 https://github.com/samarkk/spark2project/tree/master/src/main/scala/optimizationsandfindings
+https://github.com/samarkk/kafka-examples/blob/main/src/main/scripts/kafka_course_3.txt
